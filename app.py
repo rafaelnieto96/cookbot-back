@@ -34,7 +34,7 @@ def obtener_recetas():
     
     return jsonify(recetas), 200
 
-@app.route('/registro', methods=['POST'])
+@app.route('/register', methods=['POST'])
 def registrar_usuario():
     datos_usuario = request.json
     
