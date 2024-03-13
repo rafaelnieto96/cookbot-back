@@ -10,7 +10,7 @@ db = client['cookbot']
 recetas_collection = db['recipes']
 usuarios_collection = db['users']
 
-CORS(app)
+CORS(app, origins='*')
 
 @app.route('/recipes/save', methods=['POST'])
 def guardar_receta():
