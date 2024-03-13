@@ -38,7 +38,7 @@ def obtener_recetas():
 def registrar_usuario():
     datos_usuario = request.json
     
-    if usuarios_collection.find_one({'email': datos_usuario['email']}):
+    if usuarios_collection.find_one({'username': datos_usuario['username']}):
         return jsonify({'mensaje': 'El usuario ya existe'}), 400
     
     datos_usuario['password'] = generate_password_hash(datos_usuario['password'])
@@ -51,7 +51,7 @@ def registrar_usuario():
 def iniciar_sesion():
     datos_login = request.json
     
-    usuario = usuarios_collection.find_one({'email': datos_login['email']})
+    usuario = usuarios_collection.find_one({'username': datos_login['username']})
     
     if usuario and check_password_hash(usuario['password'], datos_login['password']):
         usuario['_id'] = str(usuario['_id'])
