@@ -30,8 +30,11 @@ def guardar_receta():
 
 @app.route('/recipes', methods=['GET'])
 def obtener_recetas():
-    recetas = list(recetas_collection.find({}, {'_id': 0}))
+    recetas = list(recetas_collection.find({}))
     
+    for receta in recetas:
+        receta['_id'] = str(receta['_id'])
+
     return jsonify(recetas), 200
 
 @app.route('/register', methods=['POST'])
