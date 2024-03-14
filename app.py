@@ -6,6 +6,7 @@ from flask_cors import CORS
 from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identity
 from flask_jwt_extended import JWTManager
 from datetime import datetime, timedelta
+from pymongo.errors import DuplicateKeyError
 
 app = Flask(__name__)
 app.config['JWT_SECRET_KEY'] = '6efc1e00a12d49ee85512add1da18def'  # Cambia esto a una clave secreta segura
@@ -62,11 +63,15 @@ def registrar_usuario():
         return jsonify({'mensaje': 'El usuario ya existe'}), 400
     
     datos_usuario['password'] = generate_password_hash(datos_usuario['password'])
+    result = usuarios_collection.insert_one(datos_usuario)
     
-    usuarios_collection.insert_one(datos_usuario)
-    access_token = create_access_token(identity=datos_usuario, expires_delta=timedelta(days=1))
-    return jsonify({'mensaje': 'Usuario registrado correctamente', 'access_token': access_token}), 201
-
+    # Convertir ObjectId a cadena
+    datos_usuario['_id'] = str(result.inserted_id)
+    try:
+        access_token = create_access_token(identity=datos_usuario, expires_delta=timedelta(days=1))
+        return jsonify(access_token), 201
+    except DuplicateKeyError:
+        return jsonify({'mensaje': 'Error al registrar el usuario: el nombre de usuario ya está en uso'}), 400
 @app.route('/login', methods=['POST'])
 def iniciar_sesion():
     datos_login = request.json
