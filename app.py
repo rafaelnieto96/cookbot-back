@@ -84,6 +84,7 @@ def registrar_usuario():
         return jsonify({'access_token': access_token}), 201
     except DuplicateKeyError:
         return jsonify({'mensaje': 'Error al registrar el usuario: el nombre de usuario ya está en uso'}), 400
+    
 @app.route('/login', methods=['POST'])
 def iniciar_sesion():
     datos_login = request.json
@@ -108,12 +109,6 @@ def protected():
 def cerrar_sesion():
     session.pop('username', None)
     return jsonify({'mensaje': 'Cierre de sesión exitoso'}), 200
-
-@app.route('/protected', methods=['GET'])
-@jwt_required()
-def protected():
-    current_user = get_jwt_identity()
-    return jsonify(logged_in_as=current_user), 200
 
 @app.route('/generate_recipe', methods=['POST'])
 @jwt_required()
