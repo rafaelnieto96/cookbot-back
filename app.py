@@ -2,8 +2,14 @@ from flask import Flask, request, jsonify
 from pymongo import MongoClient
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_cors import CORS
+from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identity
+from flask_jwt_extended import JWTManager
+from datetime import datetime, timedelta
 
 app = Flask(__name__)
+app.config['JWT_SECRET_KEY'] = '6efc1e00a12d49ee85512add1da18def'  # Cambia esto a una clave secreta segura
+jwt = JWTManager(app)
+
 
 client = MongoClient('mongodb://localhost:27017/')
 db = client['cookbot']
@@ -47,8 +53,8 @@ def registrar_usuario():
     datos_usuario['password'] = generate_password_hash(datos_usuario['password'])
     
     usuarios_collection.insert_one(datos_usuario)
-    
-    return jsonify({'mensaje': 'Usuario registrado correctamente'}), 201
+    access_token = create_access_token(identity=datos_usuario, expires_delta=timedelta(days=1))
+    return jsonify({'mensaje': 'Usuario registrado correctamente', 'access_token': access_token}), 201
 
 @app.route('/login', methods=['POST'])
 def iniciar_sesion():
@@ -58,9 +64,16 @@ def iniciar_sesion():
     
     if usuario and check_password_hash(usuario['password'], datos_login['password']):
         usuario['_id'] = str(usuario['_id'])
-        return jsonify({'mensaje': 'Inicio de sesión exitoso', 'usuario': usuario}), 200
+        access_token = create_access_token(identity=usuario, expires_delta=timedelta(days=1))
+        return jsonify(access_token=access_token), 200
     else:
         return jsonify({'mensaje': 'Credenciales incorrectas'}), 401
+    
+@app.route('/protected', methods=['GET'])
+@jwt_required()
+def protected():
+    current_user = get_jwt_identity()
+    return jsonify(logged_in_as=current_user), 200
 
 if __name__ == '__main__':
     app.run(debug=True)
