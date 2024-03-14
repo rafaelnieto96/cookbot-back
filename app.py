@@ -73,5 +73,17 @@ def iniciar_sesion():
     else:
         return jsonify({'mensaje': 'Credenciales incorrectas'}), 401
 
+@app.route('/generate_recipe', methods=['POST'])
+def generate_recipe():
+    ingredients = request.json.get('ingredients', [])
+    
+    print("Ingredientes recibidos:", ingredients)
+
+    if not ingredients:
+        return jsonify({'mensaje': 'No se proporcionaron ingredientes'}), 400
+
+    prompt = "Eres un experto cocinero. Generame una receta en la que se utilicen todos o algunos de estos ingredientes y ninguno más:\n" + "\n".join(ingredients)
+    # ToDo: implement IA logic
+    
 if __name__ == '__main__':
     app.run(debug=True)
