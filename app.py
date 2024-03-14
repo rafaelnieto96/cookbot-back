@@ -11,6 +11,7 @@ from pymongo.errors import DuplicateKeyError
 app = Flask(__name__)
 app.config['JWT_SECRET_KEY'] = '6efc1e00a12d49ee85512add1da18def'  # Cambia esto a una clave secreta segura
 jwt = JWTManager(app)
+app.secret_key = '123123'  # Reemplaza 'clave_secreta_para_la_session' con tu propia clave secreta
 
 
 client = MongoClient('mongodb://localhost:27017/')
@@ -95,7 +96,7 @@ def iniciar_sesion():
         session['username'] = usuario['username']
         usuario['_id'] = str(usuario['_id'])
         access_token = create_access_token(identity=usuario, expires_delta=timedelta(days=1))
-        return jsonify({'access_token': access_token}), 200
+        return jsonify({'access_token': access_token, 'username': usuario['username']}), 200
     else:
         return jsonify({'mensaje': 'Credenciales incorrectas'}), 401
     
