@@ -1,10 +1,11 @@
 from bson import ObjectId
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, session
 from pymongo import MongoClient
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_cors import CORS
 
 app = Flask(__name__)
+app.secret_key = "123123123"  # Establece una clave secreta para la sesión
 
 client = MongoClient('mongodb://localhost:27017/')
 db = client['cookbot']
@@ -48,6 +49,15 @@ def obtener_receta_por_id(recipe_id):
     else:
         return jsonify({'mensaje': 'Receta no encontrada'}), 404
     
+@app.route('/user_recipes/<string:user_id>', methods=['GET'])
+def obtener_recetas_por_usuario(user_id):
+    recetas = list(recetas_collection.find({'user_id': user_id}))
+    
+    for receta in recetas:
+        receta['_id'] = str(receta['_id'])
+
+    return jsonify(recetas), 200
+
 @app.route('/register', methods=['POST'])
 def registrar_usuario():
     datos_usuario = request.json
@@ -68,10 +78,16 @@ def iniciar_sesion():
     usuario = usuarios_collection.find_one({'username': datos_login['username']})
     
     if usuario and check_password_hash(usuario['password'], datos_login['password']):
+        session['username'] = usuario['username']
         usuario['_id'] = str(usuario['_id'])
         return jsonify({'mensaje': 'Inicio de sesión exitoso', 'usuario': usuario}), 200
     else:
         return jsonify({'mensaje': 'Credenciales incorrectas'}), 401
+
+@app.route('/logout', methods=['GET'])
+def cerrar_sesion():
+    session.pop('username', None)
+    return jsonify({'mensaje': 'Cierre de sesión exitoso'}), 200
 
 @app.route('/generate_recipe', methods=['POST'])
 def generate_recipe():
