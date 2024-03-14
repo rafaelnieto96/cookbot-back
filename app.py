@@ -38,7 +38,7 @@ def guardar_receta():
     return jsonify({'mensaje': 'Receta guardada correctamente'}), 201
 
 @app.route('/recipes', methods=['GET'])
-@jwt_required()
+#@jwt_required()
 def obtener_recetas():
     recetas = list(recetas_collection.find({}))
     
