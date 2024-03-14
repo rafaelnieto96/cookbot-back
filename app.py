@@ -21,6 +21,7 @@ usuarios_collection = db['users']
 CORS(app, origins='*')
 
 @app.route('/recipes/save', methods=['POST'])
+@jwt_required()
 def guardar_receta():
     datos_receta = request.json
     
@@ -37,6 +38,7 @@ def guardar_receta():
     return jsonify({'mensaje': 'Receta guardada correctamente'}), 201
 
 @app.route('/recipes', methods=['GET'])
+@jwt_required()
 def obtener_recetas():
     recetas = list(recetas_collection.find({}))
     
@@ -46,6 +48,7 @@ def obtener_recetas():
     return jsonify(recetas), 200
 
 @app.route('/recipes/<string:recipe_id>', methods=['GET'])
+@jwt_required()
 def obtener_receta_por_id(recipe_id):
     receta = recetas_collection.find_one({'_id': ObjectId(recipe_id)})
     
@@ -69,7 +72,7 @@ def registrar_usuario():
     datos_usuario['_id'] = str(result.inserted_id)
     try:
         access_token = create_access_token(identity=datos_usuario, expires_delta=timedelta(days=1))
-        return jsonify(access_token), 201
+        return jsonify({'access_token': access_token}), 201
     except DuplicateKeyError:
         return jsonify({'mensaje': 'Error al registrar el usuario: el nombre de usuario ya está en uso'}), 400
 @app.route('/login', methods=['POST'])
@@ -81,7 +84,7 @@ def iniciar_sesion():
     if usuario and check_password_hash(usuario['password'], datos_login['password']):
         usuario['_id'] = str(usuario['_id'])
         access_token = create_access_token(identity=usuario, expires_delta=timedelta(days=1))
-        return jsonify(access_token=access_token), 200
+        return jsonify({'access_token': access_token}), 200
     else:
         return jsonify({'mensaje': 'Credenciales incorrectas'}), 401
     
@@ -92,6 +95,7 @@ def protected():
     return jsonify(logged_in_as=current_user), 200
 
 @app.route('/generate_recipe', methods=['POST'])
+@jwt_required()
 def generate_recipe():
     ingredients = request.json.get('ingredients', [])
     
