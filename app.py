@@ -40,7 +40,6 @@ def guardar_receta():
 @app.route('/recipes', methods=['GET'])
 @jwt_required()
 def obtener_recetas():
-   def obtener_recetas():
     # Obtén el ID del usuario del token JWT
     user_id = get_jwt_identity()
 
