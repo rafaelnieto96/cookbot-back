@@ -1,5 +1,5 @@
 from bson import ObjectId
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, session
 from pymongo import MongoClient
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_cors import CORS
@@ -58,6 +58,15 @@ def obtener_receta_por_id(recipe_id):
     else:
         return jsonify({'mensaje': 'Receta no encontrada'}), 404
     
+@app.route('/user_recipes/<string:user_id>', methods=['GET'])
+def obtener_recetas_por_usuario(user_id):
+    recetas = list(recetas_collection.find({'user_id': user_id}))
+    
+    for receta in recetas:
+        receta['_id'] = str(receta['_id'])
+
+    return jsonify(recetas), 200
+
 @app.route('/register', methods=['POST'])
 def registrar_usuario():
     datos_usuario = request.json
@@ -75,6 +84,7 @@ def registrar_usuario():
         return jsonify({'access_token': access_token}), 201
     except DuplicateKeyError:
         return jsonify({'mensaje': 'Error al registrar el usuario: el nombre de usuario ya está en uso'}), 400
+    
 @app.route('/login', methods=['POST'])
 def iniciar_sesion():
     datos_login = request.json
@@ -82,6 +92,7 @@ def iniciar_sesion():
     usuario = usuarios_collection.find_one({'username': datos_login['username']})
     
     if usuario and check_password_hash(usuario['password'], datos_login['password']):
+        session['username'] = usuario['username']
         usuario['_id'] = str(usuario['_id'])
         access_token = create_access_token(identity=usuario, expires_delta=timedelta(days=1))
         return jsonify({'access_token': access_token}), 200
@@ -93,6 +104,11 @@ def iniciar_sesion():
 def protected():
     current_user = get_jwt_identity()
     return jsonify(logged_in_as=current_user), 200
+
+@app.route('/logout', methods=['GET'])
+def cerrar_sesion():
+    session.pop('username', None)
+    return jsonify({'mensaje': 'Cierre de sesión exitoso'}), 200
 
 @app.route('/generate_recipe', methods=['POST'])
 @jwt_required()
