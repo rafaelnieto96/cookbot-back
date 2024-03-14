@@ -1,3 +1,4 @@
+from bson import ObjectId
 from flask import Flask, request, jsonify
 from pymongo import MongoClient
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -43,6 +44,16 @@ def obtener_recetas():
 
     return jsonify(recetas), 200
 
+@app.route('/recipes/<string:recipe_id>', methods=['GET'])
+def obtener_receta_por_id(recipe_id):
+    receta = recetas_collection.find_one({'_id': ObjectId(recipe_id)})
+    
+    if receta:
+        receta['_id'] = str(receta['_id'])
+        return jsonify(receta), 200
+    else:
+        return jsonify({'mensaje': 'Receta no encontrada'}), 404
+    
 @app.route('/register', methods=['POST'])
 def registrar_usuario():
     datos_usuario = request.json
