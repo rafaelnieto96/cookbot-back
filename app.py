@@ -1,3 +1,8 @@
+import requests
+import os
+import random
+import uuid
+
 from bson import ObjectId
 from flask import Flask, request, jsonify, session
 from pymongo import MongoClient
@@ -7,6 +12,12 @@ from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identi
 from flask_jwt_extended import JWTManager
 from datetime import datetime, timedelta
 from pymongo.errors import DuplicateKeyError
+from dotenv import load_dotenv
+
+load_dotenv()
+
+GMAIL_ADDRESS = os.getenv("GMAIL_ADDRESS")
+API_KEY = os.getenv("API_KEY")
 
 app = Flask(__name__)
 app.config['JWT_SECRET_KEY'] = '6efc1e00a12d49ee85512add1da18def'  # Cambia esto a una clave secreta segura
@@ -116,13 +127,45 @@ def cerrar_sesion():
 def generate_recipe():
     ingredients = request.json.get('ingredients', [])
     
-    print("Ingredientes recibidos:", ingredients)
-
     if not ingredients:
         return jsonify({'mensaje': 'No se proporcionaron ingredientes'}), 400
 
     prompt = "Eres un experto cocinero. Generame una receta en la que se utilicen todos o algunos de estos ingredientes y ninguno más:\n" + "\n".join(ingredients)
-    # ToDo: implement IA logic
     
+    url = "https://ia-kong-dev.codingbuddy-4282826dce7d155229a320302e775459-0000.eu-de.containers.appdomain.cloud/aigen/llm/openai/rag/clients"
+    headers = {
+        'Content-Type': 'application/json',
+        'X-API-KEY': API_KEY
+        }
+    data = {
+        "model": "gpt-35-turbo-0301",
+        "uuid": generate_uuid(),
+        "message": {
+            "role": "user",
+            "content": prompt
+        },
+        "index": str(generate_random_number()),
+        "vectorization_model": "text-embedding-ada-002-1",
+        "temperature": 0,
+        "origin": "escueladata",
+        "user": GMAIL_ADDRESS
+    }
+
+    try:
+        response = requests.post(url, json=data, headers=headers)
+        if response.status_code == 200:
+            recipe = response.json()
+            return jsonify(recipe), 200
+        else:
+            return jsonify({'mensaje': 'Error al generar la receta'}), 500
+    except Exception as e:
+        return jsonify({'mensaje': 'Error al conectarse con la IA generativa'}), 500
+
+def generate_random_number():
+    return random.randint(1, 3)
+
+def generate_uuid():
+    return str(uuid.uuid4().hex)[:10]
+
 if __name__ == '__main__':
     app.run(debug=True)
