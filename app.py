@@ -40,8 +40,17 @@ def guardar_receta():
 @app.route('/recipes', methods=['GET'])
 @jwt_required()
 def obtener_recetas():
-    recetas = list(recetas_collection.find({}))
-    
+   def obtener_recetas():
+    # Obtén el ID del usuario del token JWT
+    user_id = get_jwt_identity()
+
+    # Convertir el ID de usuario a formato ObjectId de MongoDB
+    user_object_id = ObjectId(user_id)
+
+    # Obtén las recetas que pertenecen al usuario actual
+    recetas = list(recetas_collection.find({"user_id": user_object_id}))
+
+    # Convertir el ObjectId a cadena para serialización JSON
     for receta in recetas:
         receta['_id'] = str(receta['_id'])
 
