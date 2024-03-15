@@ -8,11 +8,13 @@ from flask import Flask, request, jsonify, session
 from pymongo import MongoClient
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_cors import CORS
-from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identity
+from flask_jwt_extended import JWTManager, create_access_token, jwt_required, get_jwt_identity, decode_token
 from flask_jwt_extended import JWTManager
 from datetime import datetime, timedelta
 from pymongo.errors import DuplicateKeyError
 from dotenv import load_dotenv
+from io import BytesIO
+
 
 load_dotenv()
 
@@ -20,10 +22,10 @@ GMAIL_ADDRESS = os.getenv("GMAIL_ADDRESS")
 API_KEY = os.getenv("API_KEY")
 
 app = Flask(__name__)
-app.config['JWT_SECRET_KEY'] = '6efc1e00a12d49ee85512add1da18def'  # Cambia esto a una clave secreta segura
+app.config['JWT_SECRET_KEY'] = '6efc1e00a12d49ee85512add1da18def'
 jwt = JWTManager(app)
 app.secret_key = '123123'  # Reemplaza 'clave_secreta_para_la_session' con tu propia clave secreta
-
+app.config['PERMANENT_SESSION_LIFETIME'] = 3600
 
 client = MongoClient('mongodb://localhost:27017/')
 db = client['cookbot']
@@ -130,8 +132,8 @@ def cerrar_sesion():
 
 @app.route('/save_recipe', methods=['GET'])
 def save_recipe():
-    user_id = get_jwt_identity().get('username')
-    usuario = usuarios_collection.find_one({"username": user_id })
+    user_name = get_jwt_identity().get('username')
+    usuario = usuarios_collection.find_one({"username": user_name })
     receta_texto=request.json  #hay que recoger el dato de la respuesta del json de la receta, no se como lo envia la api
     if usuario:
         id_usuario = str(usuario["_id"])
@@ -143,10 +145,9 @@ def save_recipe():
 
 
 @app.route('/generate_recipe', methods=['POST'])
-@jwt_required()
 def generate_recipe():
-    ingredients = request.json.get('ingredients', [])
-    
+    ingredients = request.form.getlist('ingredientes[]')
+
     if not ingredients:
         return jsonify({'mensaje': 'No se proporcionaron ingredientes'}), 400
 
@@ -155,7 +156,7 @@ def generate_recipe():
     url = "https://ia-kong-dev.codingbuddy-4282826dce7d155229a320302e775459-0000.eu-de.containers.appdomain.cloud/aigen/llm/openai/rag/clients"
     headers = {
         'Content-Type': 'application/json',
-        'X-API-KEY': API_KEY
+        'X-API-KEY': 'psvardT7iO02ZXzlqNeyWOK2xfwcOxlh'
         }
     data = {
         "model": "gpt-35-turbo-0301",
@@ -168,7 +169,7 @@ def generate_recipe():
         "vectorization_model": "text-embedding-ada-002-1",
         "temperature": 0,
         "origin": "escueladata",
-        "user": GMAIL_ADDRESS
+        "user": ''
     }
 
     try:
@@ -179,28 +180,34 @@ def generate_recipe():
         else:
             return jsonify({'mensaje': 'Error al generar la receta'}), 500
     except Exception as e:
-        return jsonify({'mensaje': 'Error al conectarse con la IA generativa'}), 500
+        return jsonify({'mensaje': 'Error al conectarse con la IA generativa '},e), 500
 
 @app.route('/send_pdf', methods=['POST'])
 def send_pdf_to_api():
-
+    pdf_file = request.files.get('file')
+    nombre=request.form['username']
+    print(nombre)
+    print(type(pdf_file))
+    if pdf_file is None:
+        print("No se ha proporcionado ningún archivo")
+        return 'No se ha proporcionado ningún archivo', 400
+    if pdf_file.filename == '':
+        print("error 1")
+        return 'No se ha seleccionado ningún archivo', 400
+    pdf_data = pdf_file.read()
+    if not pdf_data:
+        print("El archivo PDF está vacío.")
+        return {'mensaje': 'El archivo PDF está vacío'}, 400
     url = "https://ia-kong-dev.codingbuddy-4282826dce7d155229a320302e775459-0000.eu-de.containers.appdomain.cloud/api/plugin/any-client"
-    headers = {
-        'Content-Type': 'application/pdf',  # Specify content type as PDF
-        'X-API-KEY': API_KEY
-    }
-
-    pdf_path = os.path.join(os.path.dirname(__file__), "Fragmentos_de_obras.pdf")
-    print("existe o no", pdf_path)
-    if not os.path.exists(pdf_path):
-        print("El archivo PDF no existe.")
-        return
-    
+    headers = { 
+        'X-API-KEY': 'psvardT7iO02ZXzlqNeyWOK2xfwcOxlh'
+    } 
+    print(pdf_file)
     data = {
-        "file": pdf_path,
+        "file": pdf_file,
         "index": str(generate_random_number()),
-        "name": "",
-        "description": "",
+        "name": "fichero.pdf",
+        "description": "fichero pdf",
         "owner": "",
         "type": "pdf",
         "visibility": "private",
@@ -208,27 +215,33 @@ def send_pdf_to_api():
         "renderizarImagenes": "false",
         "vectorizarFile": "false",
     }
-
+      
     try:
-        response = requests.post(url, data=data, headers=headers)
-        if response.status_code == 200:
-            result = response.json()
-            return result
+        response = requests.post(url, data=data, headers=headers, files={'file': (pdf_file.filename, pdf_data)})
+        if response.status_code == 201:
+            new_id = response.json().get('id')
+            if new_id:
+                usuarios_collection.update_one(
+                {"username": nombre},
+                {"$set": {"id_documento": new_id}})
+                print("Insercion conseguida")
+            return  jsonify(response.json())
+
         else:
-            return {'mensaje': 'Error al enviar el PDF a la IA'}
+            return {'mensaje': response.status_code}
     except Exception as e:
         print("Error:", e)
         return {'mensaje': 'Error al conectarse con la IA generativa'}
-
-
-
-
+    finally:
+        print(new_id)
     
 def generate_random_number():
     return random.randint(1, 3)
 
 def generate_uuid():
     return str(uuid.uuid4().hex)[:10]
+def allowed_file(filename):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in {'pdf'}
 
 if __name__ == '__main__':
     app.run(debug=True)
