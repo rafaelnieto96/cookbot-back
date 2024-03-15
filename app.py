@@ -161,6 +161,53 @@ def generate_recipe():
     except Exception as e:
         return jsonify({'mensaje': 'Error al conectarse con la IA generativa'}), 500
 
+@app.route('/send_pdf', methods=['POST'])
+def send_pdf_to_api():
+
+    url = "https://ia-kong-dev.codingbuddy-4282826dce7d155229a320302e775459-0000.eu-de.containers.appdomain.cloud/api/plugin/any-client"
+    headers = {
+        'Content-Type': 'application/pdf',  # Specify content type as PDF
+        'X-API-KEY': API_KEY
+    }
+
+# Ruta relativa del archivo PDF
+    pdf_path = os.path.join(os.path.dirname(__file__), "Fragmento_de_obras.pdf")
+
+    # Verificar si el archivo PDF existe
+    if not os.path.exists(pdf_path):
+        print("El archivo PDF no existe.")
+        return
+    
+
+    # Request data
+    data = {
+        "file": pdf_path,
+        "index": str(generate_random_number()),
+        "name": "",
+        "description": "",
+        "owner": "",
+        "type": "pdf",
+        "visibility": "private",
+        "modelVectorization": "text-embedding-ada-002-1",
+        "renderizarImagenes": "false",
+        "vectorizarFile": "false",
+    }
+
+    try:
+        response = requests.post(url, data=data, headers=headers)
+        if response.status_code == 200:
+            result = response.json()
+            return result
+        else:
+            return {'mensaje': 'Error al enviar el PDF a la IA'}
+    except Exception as e:
+        print("Error:", e)
+        return {'mensaje': 'Error al conectarse con la IA generativa'}
+
+
+
+
+    
 def generate_random_number():
     return random.randint(1, 3)
 
