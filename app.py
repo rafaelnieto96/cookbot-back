@@ -52,8 +52,12 @@ def guardar_receta():
 @app.route('/recipes', methods=['GET'])
 @jwt_required()
 def obtener_recetas():
-    recetas = list(recetas_collection.find({}))
+    user_id = get_jwt_identity().get('_id')
     
+    user_object_id = ObjectId(user_id)
+
+    recetas = list(recetas_collection.find({"user_id": str(user_object_id)}))
+
     for receta in recetas:
         receta['_id'] = str(receta['_id'])
 
@@ -87,8 +91,9 @@ def registrar_usuario():
         return jsonify({'mensaje': 'El usuario ya existe'}), 400
     
     datos_usuario['password'] = generate_password_hash(datos_usuario['password'])
-    result = usuarios_collection.insert_one(datos_usuario)
     
+    result = usuarios_collection.insert_one(datos_usuario)
+    datos_usuario['_id'] = str(result.inserted_id)
     # Convertir ObjectId a cadena
     datos_usuario['_id'] = str(result.inserted_id)
     try:
@@ -121,6 +126,21 @@ def protected():
 def cerrar_sesion():
     session.pop('username', None)
     return jsonify({'mensaje': 'Cierre de sesión exitoso'}), 200
+
+
+@app.route('/save_recipe', methods=['GET'])
+def save_recipe():
+    user_id = get_jwt_identity().get('username')
+    usuario = usuarios_collection.find_one({"username": user_id })
+    receta_texto=request.json  #hay que recoger el dato de la respuesta del json de la receta, no se como lo envia la api
+    if usuario:
+        id_usuario = str(usuario["_id"])
+        receta = {"id_usuario": id_usuario, "receta_texto": receta_texto} #esto aun no funciona
+        recetas_collection.insert_one(receta)
+        print("Receta insertada exitosamente.")
+    else:
+        print("Usuario no encontrado.")
+
 
 @app.route('/generate_recipe', methods=['POST'])
 @jwt_required()
@@ -170,16 +190,12 @@ def send_pdf_to_api():
         'X-API-KEY': API_KEY
     }
 
-# Ruta relativa del archivo PDF
-    pdf_path = os.path.join(os.path.dirname(__file__), "Fragmento_de_obras.pdf")
-
-    # Verificar si el archivo PDF existe
+    pdf_path = os.path.join(os.path.dirname(__file__), "Fragmentos_de_obras.pdf")
+    print("existe o no", pdf_path)
     if not os.path.exists(pdf_path):
         print("El archivo PDF no existe.")
         return
     
-
-    # Request data
     data = {
         "file": pdf_path,
         "index": str(generate_random_number()),
