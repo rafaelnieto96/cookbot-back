@@ -41,13 +41,14 @@ def guardar_receta():
 @jwt_required()
 def obtener_recetas():
     # Obtén el ID del usuario del token JWT
-    user_id = get_jwt_identity()
+    user_id = get_jwt_identity().get('_id')
 
+    
     # Convertir el ID de usuario a formato ObjectId de MongoDB
     user_object_id = ObjectId(user_id)
 
     # Obtén las recetas que pertenecen al usuario actual
-    recetas = list(recetas_collection.find({"user_id": user_object_id}))
+    recetas = list(recetas_collection.find({"user_id": str(user_object_id)}))
 
     # Convertir el ObjectId a cadena para serialización JSON
     for receta in recetas:
@@ -74,8 +75,9 @@ def registrar_usuario():
         return jsonify({'mensaje': 'El usuario ya existe'}), 400
     
     datos_usuario['password'] = generate_password_hash(datos_usuario['password'])
-    result = usuarios_collection.insert_one(datos_usuario)
     
+    result = usuarios_collection.insert_one(datos_usuario)
+    datos_usuario['_id'] = str(result.inserted_id)
     # Convertir ObjectId a cadena
     datos_usuario['_id'] = str(result.inserted_id)
     try:
@@ -115,5 +117,15 @@ def generate_recipe():
     prompt = "Eres un experto cocinero. Generame una receta en la que se utilicen todos o algunos de estos ingredientes y ninguno más:\n" + "\n".join(ingredients)
     # ToDo: implement IA logic
     
+    user_id = get_jwt_identity().get('username')
+    usuario = usuarios_collection.find_one({"username": user_id })
+    receta_texto=request.json  #hay que recoger el dato de la respuesta del json de la receta, no se como lo envia la api
+    if usuario:
+        id_usuario = str(usuario["_id"])
+        receta = {"id_usuario": id_usuario, "receta_texto": receta_texto} #esto aun no funciona
+        recetas_collection.insert_one(receta)
+        print("Receta insertada exitosamente.")
+    else:
+        print("Usuario no encontrado.")
 if __name__ == '__main__':
     app.run(debug=True)
