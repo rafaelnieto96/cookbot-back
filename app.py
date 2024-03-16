@@ -66,7 +66,6 @@ def obtener_recetas():
 @app.route('/recipes/<string:recipe_id>', methods=['GET'])
 def obtener_receta_por_id(recipe_id):
     receta = recetas_collection.find_one({'_id': ObjectId(recipe_id)})
-    print(recipe_id)
     if receta:
         receta['_id'] = str(receta['_id'])
         return jsonify(receta), 200
@@ -172,6 +171,8 @@ def generate_recipe():
     try:
         response = requests.post(url, json=data, headers=headers)
         storageUser = request.form['username']
+        if response.json().get('message') == 'UUIDNotFound':
+            return jsonify({'mensaje': 'UUIDNotFound'}), 400
         if response.status_code == 200:
             recipe = response.json()
             if recipe:
@@ -265,6 +266,39 @@ def send_pdf_to_api():
     finally:
         print(new_id)
     
+@app.route('/change_username', methods=['POST'])
+def change_username():
+    nuevo_username = request.json.get('new_username')
+
+    if not nuevo_username:
+        return jsonify({'mensaje': 'Debe proporcionar un nuevo nombre de usuario'}), 400
+
+    user_id = get_jwt_identity().get('_id')
+
+    usuario = usuarios_collection.find_one({'_id': ObjectId(user_id)})
+
+    if not usuario:
+        return jsonify({'mensaje': 'Usuario no encontrado'}), 404
+
+    if usuarios_collection.find_one({'username': nuevo_username}):
+        return jsonify({'mensaje': 'El nuevo nombre de usuario ya está en uso'}), 400
+
+    usuarios_collection.update_one({'_id': ObjectId(user_id)}, {'$set': {'username': nuevo_username}})
+
+    return jsonify({'mensaje': 'Nombre de usuario actualizado exitosamente'}), 200
+
+@app.route('/recipes/delete/<string:recipe_id>', methods=['DELETE'])
+def eliminar_receta(recipe_id):
+    user_id = get_jwt_identity().get('_id')
+
+    receta = recetas_collection.find_one({'_id': ObjectId(recipe_id), 'user_id': user_id})
+    if not receta:
+        return jsonify({'mensaje': 'Receta no encontrada o no autorizada'}), 404
+
+    recetas_collection.delete_one({'_id': ObjectId(recipe_id)})
+
+    return jsonify({'mensaje': 'Receta eliminada correctamente'}), 200
+
 def generate_random_number():
     return random.randint(1, 3)
 
