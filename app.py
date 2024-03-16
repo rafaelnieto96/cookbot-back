@@ -35,7 +35,6 @@ usuarios_collection = db['users']
 CORS(app, origins='*')
 
 @app.route('/recipes/save', methods=['POST'])
-@jwt_required()
 def guardar_receta():
     datos_receta = request.json
     
@@ -55,21 +54,19 @@ def guardar_receta():
 @jwt_required()
 def obtener_recetas():
     user_id = get_jwt_identity().get('_id')
-    
     user_object_id = ObjectId(user_id)
 
-    recetas = list(recetas_collection.find({"user_id": str(user_object_id)}))
+    recetas = list(recetas_collection.find({"user_id": user_id}))
 
     for receta in recetas:
         receta['_id'] = str(receta['_id'])
 
     return jsonify(recetas), 200
 
-@app.route('/recipes/<string:username>', methods=['GET'])
-@jwt_required()
-def obtener_receta_por_id(username):
-    receta = recetas_collection.find_one({'username': username})
-    
+@app.route('/recipes/<string:recipe_id>', methods=['GET'])
+def obtener_receta_por_id(recipe_id):
+    receta = recetas_collection.find_one({'_id': ObjectId(recipe_id)})
+    print(recipe_id)
     if receta:
         receta['_id'] = str(receta['_id'])
         return jsonify(receta), 200
@@ -114,7 +111,7 @@ def iniciar_sesion():
         session['username'] = usuario['username']
         usuario['_id'] = str(usuario['_id'])
         access_token = create_access_token(identity=usuario, expires_delta=timedelta(days=1))
-        return jsonify({'access_token': access_token, 'username': usuario['username']}), 200
+        return jsonify({'access_token': access_token, 'username': usuario['username'], 'user_id': usuario['_id']}), 200
     else:
         return jsonify({'mensaje': 'Credenciales incorrectas'}), 401
     
