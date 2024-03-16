@@ -14,7 +14,7 @@ from datetime import datetime, timedelta
 from pymongo.errors import DuplicateKeyError
 from dotenv import load_dotenv
 from io import BytesIO
-
+import re
 
 load_dotenv()
 
@@ -65,10 +65,10 @@ def obtener_recetas():
 
     return jsonify(recetas), 200
 
-@app.route('/recipes/<string:recipe_id>', methods=['GET'])
+@app.route('/recipes/<string:username>', methods=['GET'])
 @jwt_required()
-def obtener_receta_por_id(recipe_id):
-    receta = recetas_collection.find_one({'_id': ObjectId(recipe_id)})
+def obtener_receta_por_id(username):
+    receta = recetas_collection.find_one({'username': username})
     
     if receta:
         receta['_id'] = str(receta['_id'])
@@ -76,9 +76,9 @@ def obtener_receta_por_id(recipe_id):
     else:
         return jsonify({'mensaje': 'Receta no encontrada'}), 404
     
-@app.route('/user_recipes/<string:user_id>', methods=['GET'])
-def obtener_recetas_por_usuario(user_id):
-    recetas = list(recetas_collection.find({'user_id': user_id}))
+@app.route('/user_recipes/<string:username>', methods=['GET'])
+def obtener_recetas_por_usuario(username):
+    recetas = list(recetas_collection.find({'username': username}))
     
     for receta in recetas:
         receta['_id'] = str(receta['_id'])
@@ -151,7 +151,7 @@ def generate_recipe():
     if not ingredients:
         return jsonify({'mensaje': 'No se proporcionaron ingredientes'}), 400
 
-    prompt = "Eres un experto cocinero. Generame una receta en la que se utilicen todos o algunos de estos ingredientes y ninguno más:\n" + "\n".join(ingredients)
+    prompt = "Eres un experto cocinero. Generame una receta en la que se utilicen todos o algunos de estos ingredientes y ninguno más:\n" + "\n".join(ingredients)+ ". Quiero que me pases solo el nombre: Nombre y los ingredientes con los pasos a seguir."
     
     url = "https://ia-kong-dev.codingbuddy-4282826dce7d155229a320302e775459-0000.eu-de.containers.appdomain.cloud/aigen/llm/openai/rag/clients"
     headers = {
@@ -174,8 +174,41 @@ def generate_recipe():
 
     try:
         response = requests.post(url, json=data, headers=headers)
+        storageUser = request.form['username']
         if response.status_code == 200:
             recipe = response.json()
+            if recipe:
+                form_dat = response.json().get('content')
+
+# Expresión regular para encontrar el nombre
+                nombre_regex = r"AI##Nombre:\s*(.*)"
+                nombre_match = re.search(nombre_regex, form_dat)
+
+                # Extraer el nombre si se encuentra
+                nombre_receta = nombre_match.group(1).strip() if nombre_match else None
+
+                # Expresión regular para encontrar el resto del texto
+                resto_regex = r"AI##Nombre:(.*)"
+                resto_match = re.search(resto_regex, form_dat, re.DOTALL)
+
+                # Extraer el resto del texto si se encuentra
+                resto_texto = resto_match.group(1).strip() if resto_match else None
+
+            # Imprimir los resultados para verificar
+                print("Nombre de la receta:", type(nombre_receta))
+                print("Resto del texto:")
+                print(type(resto_texto))
+                print("Nombre de la receta:", nombre_receta)
+                print("Resto del texto:")
+                print(resto_texto)
+                if nombre_receta is not None and resto_texto is not None:
+                    print("Ambos son de tipo str")
+                recetas_collection.insert_one(document={
+                "user_id": storageUser,
+                "title": nombre_receta,
+                "description": resto_texto
+            })
+
             return jsonify(recipe), 200
         else:
             return jsonify({'mensaje': 'Error al generar la receta'}), 500
