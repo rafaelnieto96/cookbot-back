@@ -143,11 +143,18 @@ def save_recipe():
 
 @app.route('/generate_recipe', methods=['POST'])
 def generate_recipe():
+    nombre=request.form['username']
+    usuario = usuarios_collection.find_one({"username": nombre})
+    if usuario:
+        id_documento = usuario.get("id_documento")
+        index_PDF = usuario.get("index_PDF")
+
     ingredients = request.form.getlist('ingredientes[]')
+    
 
     if not ingredients:
         return jsonify({'mensaje': 'No se proporcionaron ingredientes'}), 400
-
+    
     prompt = "Eres un experto cocinero. Generame una receta en la que se utilicen todos o algunos de estos ingredientes y ninguno más:\n" + "\n".join(ingredients)+ ". Quiero que me pases solo el nombre: Nombre y los ingredientes con los pasos a seguir."
     
     url = "https://ia-kong-dev.codingbuddy-4282826dce7d155229a320302e775459-0000.eu-de.containers.appdomain.cloud/aigen/llm/openai/rag/clients"
@@ -157,18 +164,17 @@ def generate_recipe():
         }
     data = {
         "model": "gpt-35-turbo-0301",
-        "uuid": generate_uuid(),
+        "uuid": id_documento,
         "message": {
             "role": "user",
             "content": prompt
         },
-        "index": str(generate_random_number()),
+        "index": index_PDF,
         "vectorization_model": "text-embedding-ada-002-1",
         "temperature": 0,
         "origin": "escueladata",
         "user": ''
     }
-
     try:
         response = requests.post(url, json=data, headers=headers)
         storageUser = request.form['username']
@@ -214,10 +220,9 @@ def generate_recipe():
 
 @app.route('/send_pdf', methods=['POST'])
 def send_pdf_to_api():
+    uuid_PDF = generate_uuid()
     pdf_file = request.files.get('file')
     nombre=request.form['username']
-    print(nombre)
-    print(type(pdf_file))
     if pdf_file is None:
         print("No se ha proporcionado ningún archivo")
         return 'No se ha proporcionado ningún archivo', 400
@@ -232,10 +237,10 @@ def send_pdf_to_api():
     headers = { 
         'X-API-KEY': 'psvardT7iO02ZXzlqNeyWOK2xfwcOxlh'
     } 
-    print(pdf_file)
+    
     data = {
         "file": pdf_file,
-        "index": str(generate_random_number()),
+        "index": uuid_PDF,
         "name": "fichero.pdf",
         "description": "fichero pdf",
         "owner": "",
@@ -253,7 +258,8 @@ def send_pdf_to_api():
             if new_id:
                 usuarios_collection.update_one(
                 {"username": nombre},
-                {"$set": {"id_documento": new_id}})
+                {"$set": {"id_documento": new_id,
+                          "index_PDF":uuid_PDF}})
                 print("Insercion conseguida")
             return  jsonify(response.json())
 
