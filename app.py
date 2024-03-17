@@ -294,6 +294,7 @@ def change_username():
     return jsonify({'mensaje': 'Nombre de usuario actualizado exitosamente'}), 200
 
 @app.route('/recipes/delete/<string:recipe_id>', methods=['DELETE'])
+@jwt_required()
 def eliminar_receta(recipe_id):
     user_id = get_jwt_identity().get('_id')
 
