@@ -1,0 +1,227 @@
+openapi: 3.0.0
+info:
+  title: Cookbot API
+  description: API para gestionar recetas y usuarios en Cookbot
+  version: 1.0.0
+servers:
+  - url: http://localhost:5000
+    description: Local server
+paths:
+  /recipes/save:
+    post:
+      summary: Guardar una nueva receta
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                user_id:
+                  type: string
+                title:
+                  type: string
+                description:
+                  type: string
+      responses:
+        '201':
+          description: Receta guardada correctamente
+        '400':
+          description: Faltan campos obligatorios
+  /recipes:
+    get:
+      summary: Obtener todas las recetas del usuario autenticado
+      responses:
+        '200':
+          description: Lista de recetas obtenidas correctamente
+        '401':
+          description: Unauthorized - Token de acceso no válido
+  /recipes/{recipe_id}:
+    get:
+      summary: Obtener una receta por su ID
+      parameters:
+        - in: path
+          name: recipe_id
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Receta encontrada y devuelta correctamente
+        '404':
+          description: Receta no encontrada
+  /user_recipes/{username}:
+    get:
+      summary: Obtener todas las recetas de un usuario por su nombre de usuario
+      parameters:
+        - in: path
+          name: username
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Lista de recetas del usuario obtenida correctamente
+  /register:
+    post:
+      summary: Registrar un nuevo usuario
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                username:
+                  type: string
+                password:
+                  type: string
+      responses:
+        '201':
+          description: Usuario registrado correctamente
+        '400':
+          description: El usuario ya existe o falta algún campo obligatorio
+  /login:
+    post:
+      summary: Iniciar sesión de usuario
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                username:
+                  type: string
+                password:
+                  type: string
+      responses:
+        '200':
+          description: Sesión iniciada correctamente
+        '401':
+          description: Credenciales incorrectas
+  /protected:
+    get:
+      summary: Obtener información del usuario autenticado
+      responses:
+        '200':
+          description: Información del usuario obtenida correctamente
+        '401':
+          description: Unauthorized - Token de acceso no válido
+  /logout:
+    get:
+      summary: Cerrar sesión de usuario
+      responses:
+        '200':
+          description: Sesión cerrada correctamente
+  /save_recipe:
+    get:
+      summary: Guardar una receta generada
+      parameters:
+        - in: query
+          name: username
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Receta guardada correctamente
+        '400':
+          description: Usuario no encontrado
+  /generate_recipe:
+    post:
+      summary: Generar una receta a partir de una lista de ingredientes (con PDF)
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              properties:
+                username:
+                  type: string
+                ingredientes:
+                  type: array
+                  items:
+                    type: string
+      responses:
+        '200':
+          description: Receta generada correctamente
+        '400':
+          description: No se proporcionaron ingredientes
+  /generate_recipe_no_pdf:
+    post:
+      summary: Generar una receta a partir de una lista de ingredientes (sin PDF)
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              properties:
+                username:
+                  type: string
+                ingredientes:
+                  type: array
+                  items:
+                    type: string
+      responses:
+        '200':
+          description: Receta generada correctamente
+        '400':
+          description: No se proporcionaron ingredientes
+  /send_pdf:
+    post:
+      summary: Enviar un archivo PDF para su procesamiento
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                username:
+                  type: string
+                file:
+                  type: string
+                  format: binary
+      responses:
+        '200':
+          description: Archivo PDF enviado correctamente
+        '400':
+          description: No se proporcionó ningún archivo o el archivo PDF está vacío
+  /change_username:
+    post:
+      summary: Cambiar el nombre de usuario
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                new_username:
+                  type: string
+      responses:
+        '200':
+          description: Nombre de usuario actualizado correctamente
+        '400':
+          description: Debe proporcionar un nuevo nombre de usuario
+        '404':
+          description: Usuario no encontrado
+  /recipes/delete/{recipe_id}:
+    delete:
+      summary: Eliminar una receta por su ID
+      parameters:
+        - in: path
+          name: recipe_id
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Receta eliminada correctamente
+        '401':
+          description: Unauthorized - Token de acceso no válido
+        '404':
+          description: Receta no encontrada o no autorizada
