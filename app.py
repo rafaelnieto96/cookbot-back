@@ -273,6 +273,7 @@ def send_pdf_to_api():
         print(new_id)
     
 @app.route('/change_username', methods=['POST'])
+@jwt_required()
 def change_username():
     nuevo_username = request.json.get('new_username')
 
