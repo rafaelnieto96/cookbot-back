@@ -142,6 +142,8 @@ def save_recipe():
 
 @app.route('/generate_recipe', methods=['POST'])
 def generate_recipe():
+    print('Entra por generate_recipe')
+
     nombre=request.form['username']
     usuario = usuarios_collection.find_one({"username": nombre})
     if usuario:
@@ -149,7 +151,6 @@ def generate_recipe():
         index_PDF = usuario.get("index_PDF")
 
     ingredients = request.form.getlist('ingredientes[]')
-    
 
     if not ingredients:
         return jsonify({'mensaje': 'No se proporcionaron ingredientes'}), 400
@@ -159,7 +160,7 @@ def generate_recipe():
     url = "https://ia-kong-dev.codingbuddy-4282826dce7d155229a320302e775459-0000.eu-de.containers.appdomain.cloud/aigen/llm/openai/rag/clients"
     headers = {
         'Content-Type': 'application/json',
-        'X-API-KEY': 'psvardT7iO02ZXzlqNeyWOK2xfwcOxlh'
+        'X-API-KEY': API_KEY
         }
     data = {
         "model": "gpt-35-turbo-0301",
@@ -172,7 +173,7 @@ def generate_recipe():
         "vectorization_model": "text-embedding-ada-002-1",
         "temperature": 0,
         "origin": "escueladata",
-        "user": ''
+        "user": GMAIL_ADDRESS
     }
     try:
         response = requests.post(url, json=data, headers=headers)
@@ -219,6 +220,83 @@ def generate_recipe():
     except Exception as e:
         return jsonify({'mensaje': 'Error al conectarse con la IA generativa '},e), 500
 
+@app.route('/generate_recipe_no_pdf', methods=['POST'])
+def generate_recipe_no_pdf():
+    print('Entra por generate_recipe_no_pdf')
+    
+    nombre = request.form['username']
+    usuario = usuarios_collection.find_one({"username": nombre})
+    if usuario:
+        id_documento = usuario.get("id_documento")
+        index_PDF = usuario.get("index_PDF")
+
+    ingredients = request.form.getlist('ingredientes[]')
+    
+
+    if not ingredients:
+        return jsonify({'mensaje': 'No se proporcionaron ingredientes'}), 400
+    
+    prompt = "Eres un experto cocinero. Generame una receta en la que se utilicen todos o algunos de estos ingredientes y ninguno más:\n" + "\n".join(ingredients)+ ". Quiero que me pases solo el nombre: Nombre y los ingredientes con los pasos a seguir."
+    
+    url = "https://ia-kong-dev.codingbuddy-4282826dce7d155229a320302e775459-0000.eu-de.containers.appdomain.cloud/aigen/llm/openai/clients"
+    headers = {
+        'Content-Type': 'application/json',
+        'X-API-KEY': API_KEY
+        }
+    data = {
+        "model": "gpt-35-turbo-0301",
+        "uuid": generate_uuid(),
+        "message": {
+            "role": "user",
+            "content": prompt
+        },
+        "temperature": 0.05,
+        "origin": "escueladata",
+        "tokens": 1000,
+        "folder": "root",
+        "account":"WatsonX-VN",
+        "user": GMAIL_ADDRESS
+    }
+    try:
+        response = requests.post(url, json=data, headers=headers)
+        storageUser = request.form['username']
+        if response.json().get('message') == 'UUIDNotFound':
+            return jsonify({'mensaje': 'UUIDNotFound'}), 400
+        if response.status_code == 200:
+            recipe = response.json()
+            if recipe:
+                form_dat = response.json().get('content')
+
+                nombre_regex = r"AI##Nombre:\s*(.*)"
+                nombre_match = re.search(nombre_regex, form_dat)
+
+                nombre_receta = nombre_match.group(1).strip() if nombre_match else None
+
+                resto_regex = r"AI##Nombre:(.*)"
+                resto_match = re.search(resto_regex, form_dat, re.DOTALL)
+
+                resto_texto = resto_match.group(1).strip() if resto_match else None
+
+                print("Nombre de la receta:", type(nombre_receta))
+                print("Resto del texto:")
+                print(type(resto_texto))
+                print("Nombre de la receta:", nombre_receta)
+                print("Resto del texto:")
+                print(resto_texto)
+                if nombre_receta is not None and resto_texto is not None:
+                    print("Ambos son de tipo str")
+                recetas_collection.insert_one(document={
+                "user_id": storageUser,
+                "title": nombre_receta,
+                "description": resto_texto
+            })
+
+            return jsonify(recipe), 200
+        else:
+            return jsonify({'mensaje': 'Error al generar la receta'}), 500
+    except Exception as e:
+        return jsonify({'mensaje': 'Error al conectarse con la IA generativa '},e), 500
+    
 @app.route('/send_pdf', methods=['POST'])
 def send_pdf_to_api():
     uuid_PDF = generate_uuid()
@@ -236,7 +314,7 @@ def send_pdf_to_api():
         return {'mensaje': 'El archivo PDF está vacío'}, 400
     url = "https://ia-kong-dev.codingbuddy-4282826dce7d155229a320302e775459-0000.eu-de.containers.appdomain.cloud/api/plugin/any-client"
     headers = { 
-        'X-API-KEY': 'psvardT7iO02ZXzlqNeyWOK2xfwcOxlh'
+        'X-API-KEY': API_KEY
     } 
     
     data = {
