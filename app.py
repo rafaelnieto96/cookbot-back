@@ -397,6 +397,7 @@ def generate_random_number():
 
 def generate_uuid():
     return str(uuid.uuid4().hex)[:10]
+
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in {'pdf'}
 
