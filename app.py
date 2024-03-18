@@ -24,7 +24,7 @@ API_KEY = os.getenv("API_KEY")
 app = Flask(__name__)
 app.config['JWT_SECRET_KEY'] = '6efc1e00a12d49ee85512add1da18def'
 jwt = JWTManager(app)
-app.secret_key = '123123'  # Reemplaza 'clave_secreta_para_la_session' con tu propia clave secreta
+app.secret_key = '123123'
 app.config['PERMANENT_SESSION_LIFETIME'] = 3600
 
 client = MongoClient('mongodb://localhost:27017/')
@@ -92,8 +92,6 @@ def registrar_usuario():
     
     result = usuarios_collection.insert_one(datos_usuario)
     datos_usuario['_id'] = str(result.inserted_id)
-    # Convertir ObjectId a cadena
-    datos_usuario['_id'] = str(result.inserted_id)
     try:
         access_token = create_access_token(identity=datos_usuario, expires_delta=timedelta(days=1))
         return jsonify({'access_token': access_token}), 201
@@ -130,10 +128,10 @@ def cerrar_sesion():
 def save_recipe():
     user_name = get_jwt_identity().get('username')
     usuario = usuarios_collection.find_one({"username": user_name })
-    receta_texto=request.json  #hay que recoger el dato de la respuesta del json de la receta, no se como lo envia la api
+    receta_texto=request.json 
     if usuario:
         id_usuario = str(usuario["_id"])
-        receta = {"id_usuario": id_usuario, "receta_texto": receta_texto} #esto aun no funciona
+        receta = {"id_usuario": id_usuario, "receta_texto": receta_texto}
         recetas_collection.insert_one(receta)
         print("Receta insertada exitosamente.")
     else:
@@ -185,21 +183,16 @@ def generate_recipe():
             if recipe:
                 form_dat = response.json().get('content')
 
-# Expresión regular para encontrar el nombre
                 nombre_regex = r"AI##Nombre:\s*(.*)"
                 nombre_match = re.search(nombre_regex, form_dat)
 
-                # Extraer el nombre si se encuentra
                 nombre_receta = nombre_match.group(1).strip() if nombre_match else None
 
-                # Expresión regular para encontrar el resto del texto
                 resto_regex = r"AI##Nombre:(.*)"
                 resto_match = re.search(resto_regex, form_dat, re.DOTALL)
 
-                # Extraer el resto del texto si se encuentra
                 resto_texto = resto_match.group(1).strip() if resto_match else None
 
-            # Imprimir los resultados para verificar
                 print("Nombre de la receta:", type(nombre_receta))
                 print("Resto del texto:")
                 print(type(resto_texto))
