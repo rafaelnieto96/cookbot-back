@@ -31,7 +31,7 @@ client = MongoClient('mongodb://localhost:27017/')
 db = client['cookbot']
 recetas_collection = db['recipes']
 usuarios_collection = db['users']
-
+ingredientsDB = db['ingredients']
 CORS(app, origins='*')
 
 @app.route('/recipes/save', methods=['POST'])
@@ -151,6 +151,12 @@ def generate_recipe():
         index_PDF = usuario.get("index_PDF")
 
     ingredients = request.form.getlist('ingredientes[]')
+    datos_ingrediente = {
+    "username": nombre,
+    "ingredientes": ingredients
+}   
+    print(ingredients)
+    ingredientsDB.insert_one(datos_ingrediente)
 
     if not ingredients:
         return jsonify({'mensaje': 'No se proporcionaron ingredientes'}), 400
@@ -231,7 +237,16 @@ def generate_recipe_no_pdf():
     if usuario:
         id_documento = usuario.get("id_documento")
         index_PDF = usuario.get("index_PDF")
-    
+
+
+    ingredients = request.form.getlist('ingredientes[]')
+    datos_ingrediente = {
+    "username": nombre,
+    "ingredientes": ingredients
+}   
+    print(ingredients)
+    ingredientsDB.insert_one(datos_ingrediente)
+
     if not ingredients:
         return jsonify({'mensaje': 'No se proporcionaron ingredientes'}), 400
     
