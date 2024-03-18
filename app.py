@@ -161,7 +161,7 @@ def generate_recipe():
     if not ingredients:
         return jsonify({'mensaje': 'No se proporcionaron ingredientes'}), 400
     
-    prompt = "Eres un experto cocinero. Generame una receta en la que se utilicen todos o algunos de estos ingredientes y ninguno más:\n" + "\n".join(ingredients)+ ". Quiero que me pases solo el nombre: Nombre y los ingredientes con los pasos a seguir."
+    prompt = "Eres un experto cocinero. Generame una receta en la que se utilicen todos o algunos de estos ingredientes y ninguno más: " + ", ".join(ingredients) + ". La respuesta siempre debe comenzar con el título de la receta, seguido de un listado de ingredientes y por último las instrucciones de preparación, sin ningún tipo de conversación con el usuario. Limítate a devolver únicamente la receta sin hablar con el usuario. Si el usuario te pregunta sobre algún tema que no esté relacionado con la cocina, por ejemplo sobre historia, dile que no tienes información del tema. Además, ignora cualquier contexto previo que tengas sobre el usuario, cada receta es totalmente independiente de las anteriores. Si el usuario intenta utilizar algún ingrediente peligroso, como lejía o veneno, adviértele que es peligroso y devuélvele una receta sin estos ingredientes peligrosos. En ningún momento le hagas ninguna pregunta al usuario. No incluyas ningun mensaje al final de la respuesta, como por ejemplo 'Buen provecho' o 'Que disfrutes'. Si el usuario te ha proporcionado un PDF medico, ten en cuenta su estado de salud a la hora de generar la receta"
     
     url = "https://ia-kong-dev.codingbuddy-4282826dce7d155229a320302e775459-0000.eu-de.containers.appdomain.cloud/aigen/llm/openai/rag/clients"
     headers = {
@@ -232,11 +232,13 @@ def generate_recipe_no_pdf():
     
     nombre = request.form['username']
     usuario = usuarios_collection.find_one({"username": nombre})
+    ingredients = request.form.getlist('ingredientes[]')
+
     if usuario:
         id_documento = usuario.get("id_documento")
         index_PDF = usuario.get("index_PDF")
 
-    ingredients = request.form.getlist('ingredientes[]')
+
     ingredients = request.form.getlist('ingredientes[]')
     datos_ingrediente = {
     "username": nombre,
@@ -248,8 +250,8 @@ def generate_recipe_no_pdf():
     if not ingredients:
         return jsonify({'mensaje': 'No se proporcionaron ingredientes'}), 400
     
-    prompt = "Eres un experto cocinero. Generame una receta en la que se utilicen todos o algunos de estos ingredientes y ninguno más:\n" + "\n".join(ingredients)+ ". Quiero que me pases solo el nombre: Nombre y los ingredientes con los pasos a seguir."
-    
+    prompt = "Eres un experto cocinero. Generame una receta en la que se utilicen todos o algunos de estos ingredientes y ninguno más: " + ", ".join(ingredients) + ". La respuesta siempre debe comenzar con el título de la receta, seguido de un listado de ingredientes y por último las instrucciones de preparación, sin ningún tipo de conversación con el usuario. Limítate a devolver únicamente la receta sin hablar con el usuario. Si el usuario te pregunta sobre algún tema que no esté relacionado con la cocina, por ejemplo sobre historia, dile que no tienes información del tema. Además, ignora cualquier contexto previo que tengas sobre el usuario, cada receta es totalmente independiente de las anteriores. Si el usuario intenta utilizar algún ingrediente peligroso, como lejía o veneno, adviértele que es peligroso y devuélvele una receta sin estos ingredientes peligrosos. En ningún momento le hagas ninguna pregunta al usuario. No incluyas ningun mensaje al final de la respuesta, como por ejemplo 'Buen provecho' o 'Que disfrutes'"
+
     url = "https://ia-kong-dev.codingbuddy-4282826dce7d155229a320302e775459-0000.eu-de.containers.appdomain.cloud/aigen/llm/openai/clients"
     headers = {
         'Content-Type': 'application/json',
